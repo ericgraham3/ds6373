@@ -1,0 +1,104 @@
+---
+title: "Unit 9 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tswge)
+set.seed(1234)
+```
+
+# Question 6.1
+
+## 6.1.a
+
+### Base Model
+
+We generate an AR(3) model with phi values of 1.95, -1.85, and .855.
+
+```{r}
+A = gen.arma.wge(n=150, phi=c(1.95,-1.85,.855), sn=3847)
+A_plot = plotts.sample.wge(A)
+```
+
+```{r, results='hide'}
+factor.wge(phi=c(1.95,-1.85,.855))
+```
+
+We see that both the real and complex factors of our generated realization are within the unit circle (abs recip < 1), so we have generated a stationary model.
+
+### Yule-Walker Estimate
+
+```{r}
+yw_fit = est.ar.wge(A, p=3, method="yw")
+```
+
+The Yule-Walker estimate likewise finds roots within the unit circle, but they are smaller than those in the original model. The roots are very close, as is the system frequency of the complex root factor.
+
+### Burg Estimate
+
+```{r}
+burg_fit = est.ar.wge(A, p=3, method="burg")
+```
+
+The Burg estimate's roots are somewhat closer to those of the original model than the Yule-Walker estimate, though the Yule-Walker system frequency was marginally closer.
+
+## 6.1.b
+
+### Model Fit from Maximum Likelihood Estimation (MLE)
+
+```{r}
+mle_fit = est.ar.wge(A, p=3, method="mle")
+
+A_mle = gen.arma.wge(n=150, phi=mle_fit$phi, sn=3847)
+mle_plot = plotts.sample.wge(A_ml)
+```
+
+### Model Fit from Yule-Walker Estimate
+
+```{r}
+A_yw = gen.arma.wge(n=150, phi=yw_fit$phi, sn=3847)
+yw_plot = plotts.sample.wge(A_yw)
+```
+
+### Model Fit from Burg Estimate
+
+```{r}
+A_burg = gen.arma.wge(n=150, phi=burg_fit$phi, sn=3847)
+burg_plot = plotts.sample.wge(A_burg)
+```
+
+# 6.2
+
+```{r}
+data("sunspot2.0")
+sunspot_plot = plotts.wge(sunspot2.0)
+```
+
+## Factors or AR(9) Model
+
+```{r}
+ar9_fit = est.ar.wge(sunspot2.0, p=9)
+```
+
+## Factors of AR(10) Model
+
+```{r}
+ar10_fit = est.ar.wge(sunspot2.0, p=10)
+```
+
+## AIC
+
+```{r}
+aic5.ar.wge(sunspot2.0, p=0:10)
+```
+
+Given that the AIC is lower for the AR(9) model and that it is slightly simpler than the AIC(10) model, I would choose the AR(9).
+
+# Question 6.11
+
