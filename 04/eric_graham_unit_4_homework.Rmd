@@ -1,0 +1,212 @@
+---
+title: "Unit 4 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    # toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tswge)
+```
+
+# 5.2: AR(2) Analysis
+
+## Generate Realizations
+
+```{r}
+model_a = gen.arma.wge(n = 150, phi = c(1.6, -0.63), sn = 1)
+
+model_b = gen.arma.wge(n = 150, phi = c(-1.6, -0.63), sn = 1)
+```
+
+## 5.2(i): Factor Tables
+
+### Model A
+
+```{r}
+factor.wge(phi = c(1.6, -0.63))
+```
+
+### Model B
+
+```{r}
+factor.wge(phi = c(-1.6, -0.63))
+```
+
+## 5.2(ii): Roots
+
+### Model A
+
+The factor table above shows that the roots of the characteristic equation for Model A are 1.1111 and 1.4286. Since both are outside the unit circle ($|z| > 1$) the model is stationary!
+
+### Model B
+
+The factor table above shows that the roots of the characteristic equation for Model B are -1.1111 and -1.4286. Again, since both are outside the unit circle ($|z| > 1$) the model is stationary.
+
+## 5.2(ii): Factored Form
+
+### Model A
+
+$$
+(1 - 0.9000B)(1 - 0.7000B)X_t = a_t
+$$
+
+### Model B
+
+$$
+(1 + 0.9000B)(1 + 0.7000B)X_t = a_t
+$$
+
+## 5.2(iv): Plots and Model Behavior
+
+### Model A
+
+```{r}
+plotts.sample.wge(model_a)
+```
+
+An examination of the realizations of Model A shows wandering, non-oscillating behavior and an increasing mean over time, which would indicate a possible trend.
+
+The ACF shows high correlation at the first lag and slow decay, which is also consistent with trending behavior. 
+
+The Parzen spectral density function a peak at zero, which continues to support the idea of trending behavior. 
+
+Looking back at our factor table, we see that both roots are positive and both models have system frequencies of 0, which is consistent with the trending/non-oscillating behavior we see in the plots.
+
+### Model B
+
+```{r}
+plotts.sample.wge(model_b)
+```
+
+The realization plot for Model B shows rapid oscillations! This is consistent with the alternating positive/negative correlations on the ACF table and the spike at 0.5 of the spectral density plot. The factor table confirm this with both roots being negative and both models having system frequencies of 0.5.
+
+# 5.3: AR(p) Stationarity
+
+## 5.3(a)
+
+```{r}
+model_3_a = factor.wge(phi = c(1.55, -1, 0.25))
+```
+
+Because the absolute reciprocals of both factors are less than 1, Model A is stationary.
+
+## 5.3(b)
+
+```{r}
+model_3_b = factor.wge(phi = c(2, -1.76, 1.6, -0.77))
+```
+
+Because the absolute reciprocal of one of the factors (the first one) is greater than 1 (1.1977), the model is non-stationary.
+
+## 5.3(c)
+
+```{r}
+model_3_c = factor.wge(phi = c(1.9, -2.3, 2, -1.2, 0.4))
+```
+
+Because all the absolute reciprocals are less than 1, Model C is stationary.
+
+## 5.3(d)
+
+```{r}
+model_3_d = factor.wge(phi = c(2.5, -3.14, 2.97, -2.016, 0.648))
+```
+As with Model C, because all the absolute reciprocals are less than 1, Model D is stationary.
+
+# 5.4: AR(p) Model Matching
+
+## 5.4(i): Factor Tables and Matching
+
+### Model A
+
+```{r}
+model_4_a = factor.wge(phi = c(2.9, -3.72, 2.63, -0.828))
+```
+
+Because all the absolute reciprocals are less than 1, Model A is stationary, so we should not see wandering or explosive behavior. However, they are both high, so that could reflect oscillating behavior. We see one very low frequency (0.0220) coupled with a more moderate frequency (0.1616) so we would expect to see complex, oscillating behavior. 
+
+I would match this to Realization C: even though there appears to be an upward trend, there is no wandering component, and there are two different cyclical/oscillating components.
+
+### Model B
+
+```{r}
+model_4_b = factor.wge(phi = c(1.99, -1.69, 0.693))
+```
+
+For Factor 1, the system frequency of 0 indicates wandering/trending behavior, and because Factor 1 has the higher absolute reciprocal we would expect that wandering behavior to dominate. Factor 2 has a system frequency of 0.1481, which indicates a moderate cyclical component as a secondary pattern within the realization, but with a much lower absolute reciprocal value the wandering behavior should be more pronounced.
+
+I would match this to Realization A because of the slow, wandering behavior of the realization.
+
+### Model C
+
+```{r}
+model_4_c = factor.wge(phi = c(0.28, 0.134, -0.8924))
+```
+
+All the absolute reciprocals are less than 1, so Model C is stationary and we shouldn't see wandering/trending behavior. The dominant factor (factor 1) has a system frequency of 0.1457, indicating cyclical behavior in time periods of 7, combined with period-2 oscillations from factor 2 (system frequency of .5). 
+
+I would match this to Realization B because it matches the cyclical behavior and period-2 oscillations from Model C, and it appears to be the "busiest" of the models.
+
+## 5.4(ii): Generate Realizations and Plots
+
+### Model A
+
+```{r}
+realization_4_a = gen.arma.wge(n = 100, phi = c(2.9, -3.72, 2.63, -0.828), sn = 21)
+plotts.sample.wge(realization_4_a)
+```
+
+Unfortunately, the realization for Model A more closely matches the graph for Realization A from Part (i). In hindsight, the ACF plot confirms the behavior expected from the pair of complex roots shown in the factor table, which I had overlooked: this sinusoidal pattern is consistent with the complex roots. Likewise, the ACF has peaks concentrated at very low frequencies, which matches the low frequencies from the favtor table.
+
+### Model B
+
+```{r}
+realization_4_b = gen.arma.wge(n = 100, phi = c(1.99, -1.69, 0.693), sn = 229)
+plotts.sample.wge(realization_4_b)
+```
+
+Unfortunately, the rezlization for Model B more closely matches the plot of Realization C. The ACF shows the slow, all-positive decay associated with a system frequency of 0, and the spectral density plot shows a massive peak at 0 which is associated with the strong wandering behavior of the realization.
+
+### Model C
+
+```{r}
+realization_4_c = gen.arma.wge(n = 100, phi = c(0.28, 0.134, -0.8924), sn = 26)
+plotts.sample.wge(realization_4_c)
+```
+
+The realization for Model C does match the plot of Realization B. The ACF shows the alternating positive/negative correlations associated with the oscillatory behavior that we would expect from the combination of complex and negative roots, and the spectral density plot shows peaks at .1457 as well as the peak at 0.5 (which one would expect with period-7 and period-2 oscillations).
+
+## 5.4(iii): Generate and Analyze Alternative Realizations
+
+### Model A
+
+```{r}
+alt_realization_4_a = gen.arma.wge(n = 100, phi = c(2.9, -3.72, 2.63, -0.828), sn = 123)
+plotts.sample.wge(alt_realization_4_a)
+```
+
+This SN value produces a realization which closely matches Realization A from part (i), so it further confirms for me that my match was incorrect.
+
+### Model B
+
+```{r}
+alt_realization_4_b = gen.arma.wge(n = 100, phi = c(1.99, -1.69, 0.693), sn = 456)
+plotts.sample.wge(alt_realization_4_b)
+```
+
+This is the most intriguing of the alternative models, in that the realization appears to show a very different trend. However, as with the realization generated with SN value of 229 in  part (ii), the realization plot shows strong wandering behavior. The spectral density plot still shows the peak at 0, and while the ACF shows some negative values it is predominantly positive with slow, steady decay of correlations.
+
+### Model C
+
+```{r}
+alt_realization_4_c = gen.arma.wge(n = 100, phi = c(0.28, 0.134, -0.8924), sn = 789)
+plotts.sample.wge(alt_realization_4_c)
+```
+
+As with Model A, the alternative realization for Model C closely matches Realization B from part (i), which further confirms my match: the realization plot shows the same rapid oscillations, the ACF shows the same alternating positive/negative correlations, and the spectral density plot shows the same peaks one would associate with period-7 and period-2 oscillations.

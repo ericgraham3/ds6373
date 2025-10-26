@@ -1,0 +1,65 @@
+---
+title: "For Live Session 1"
+author: "Eric Graham"
+date: '`r Sys.Date()`'
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+```
+
+# Description
+
+I chose the historical Consumer Price Index for All Urban Consumers (CPI) data (as provided by [The Federal Reserve Bank of St. Louis](https://fred.stlouisfed.org/series/CPIAUCSL)). In addition to being a subject of political discourse in recent years, I'm interested in inflation as a macroeconomic indicator of how well workers are compensated for their labor, and their relative quality of life. The CFI data is a monthly time series that runs from January 1947 through July 2025, and consists of 943 total observations.
+
+```{r}
+cpi_data = read.csv("CPIAUCSL.csv", header = TRUE)
+str(cpi_data)
+x = cpi_data$CPIAUCSL
+cat("Total observations:", length(x), "\n")
+```
+
+# Additional Realizations / Initial x Values
+
+This represents the actual CPI data as it historically occurred, so no additional realizations are available. 
+
+x₁ = 21.48, x₂ = 21.62, x₃ = 22
+
+```{r}
+cat("x1 =", x[1], "\n")
+cat("x2 =", x[2], "\n") 
+cat("x3 =", x[3], "\n")
+```
+
+# Conditions of Stationarity (Part 1)
+
+## Condition 1: Constant Mean
+
+A visual examination of the CPI data shows that the mean is not constant over time: the CPI has generally increased, indicating a trend in the data.
+
+## Condition 2: Constant Variance
+
+Again, a visual examination of the CPI data shows that the variance is not constant over time: it appears relatively stable early but there is increased volatility in later years.
+
+```{r}
+plotts.wge(x, main = "Consumer Price Index for Urban Consumers (CPI)")
+```
+
+# Conditions of Stationarity (Part 2)
+
+## Condition 3 (Autocorrelation)
+
+The ACF (Autocorrelation Function) of the CPI data shows that there are significant autocorrelations at various lags, indicating that the series is not stationary. The ACF does not even come close to zero.
+
+```{r}
+acf(x, plot = TRUE)
+```
+
+# Key Takeaways
+
+* Stationarity has three conditions: constant mean over time, constant variance over time, and autocorrelation
+* Time series analysis typically works with one realization, making stationarity assumptions crucial for creating estimates
+* The autocorrelation function reveals whether there is correlation between observations of various time spans, which helps identify trends that violate stationarity
+* When stationarity conditions are met, we can rely on estimates of the mean, variance, and autocorrelations, enabling confidence intervals and statistical inference

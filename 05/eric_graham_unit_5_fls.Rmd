@@ -1,0 +1,67 @@
+---
+title: "Unit 5 FLS"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+```
+
+# 1: ARMA models in the Walmart data
+
+```{r}
+walmart = read.csv("Walmart.csv")
+aic5.wge(walmart$sales)
+```
+
+* Looking at the AIC values for Walmart data, we see that all top 5 models are ARMA models! No pure AR (q=0) or MA (p=0) models made the top 5.
+* The top-ranked model is ARMA(7,5), indicating that the walmart data benefits from the complexity of a higher-order ARMA model.
+* This supports the idea that adding MA terms to an AR model can improve model fit.
+
+# 2: Finding Rho_1 By Hand
+
+$$X_t = a_t - 0.8a_{t-1} + 0.5a_{t-2}$$
+
+$$\theta_1 = 0.8, \quad \theta_2 = -0.5$$
+
+$$\rho_1 = \frac{-\theta_1 + \theta_1\theta_2}{1 + \theta_1^2 + \theta_2^2}$$
+
+$$\rho_1 = \frac{-0.8 + (0.8)(-0.5)}{1 + (0.8)^2 + (-0.5)^2}=\frac{-1.2}{1.89}$$
+
+$$\rho_1 = \frac{-0.8 - 0.4}{1 + 0.64 + 0.25} = \frac{-1.2}{1.89}\approx -0.635$$
+
+# 3: GLP Form
+
+$$X_t = a_t - 0.8a_{t-1} + 0.5a_{t-2}$$
+
+```{r}
+psi.weights.wge(theta = c(0.8, -0.5), lag.max = 5)
+```
+
+$$X_t = 1 \cdot a_t + (-0.8) \cdot a_{t-1} + 0.5 \cdot a_{t-2}$$
+
+# 4: Generating Realization
+
+```{r}
+x = gen.arma.wge(n = 100, phi = 0.7, theta = 0.4, sn = 1234)
+plotts.true.wge(phi = 0.7, theta = 0.4)
+```
+
+# 5: AIC for Flight Data
+
+```{r}
+swa = read.csv("swadelay.csv")
+aic5.wge(swa$arr_cancelled)
+```
+
+All five of the top models are ARMA models, no models are pure AR (q=0) or MA (p=0). This indicates that the SouthWest cancellation data is complex enough that it benefits from the enhanced modeling provided by ARMA.
+
+# 6: Key Takeaways
+
+* MA models use white noise terms to describe a time series. They must be invertible, and are not useful on their own, but they can be combined with AR models to form ARMA models.
+* ARMA models combine AR and MA terms for enhanced performance with fewer parameters than complex AR models.
+* ARMA models can be expressed as an infinite series of moving averages using psi weights, and this expression is called the General Linear Process form.
+* AIC can be used to test the effectiveness of multiple model types on a dataset, and we often see ARMA models outperforming pure AR models because of the added complexity (I don't feel as confident about the "why" of this as that sentence sounds, but I'm trying to wrap my mind around the idea and appropriate terminology; it feels similar to "more complexity explains more variance" in linear regression `models)

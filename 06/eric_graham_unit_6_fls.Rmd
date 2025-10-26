@@ -1,8 +1,10 @@
 ---
-title: "Unit 6 FLS"
+title: "Unit 5 FLS"
 author: "Eric Graham"
 date: "`r Sys.Date()`"
-output: powerpoint_presentation
+output: 
+  powerpoint_presentation:
+    slide_level: 2
 ---
 
 ```{r setup, include=FALSE}
@@ -10,14 +12,97 @@ knitr::opts_chunk$set(echo = FALSE)
 library(tswge)
 ```
 
-```{r}
-gen.sigplusnoise.wge(100, b0=2, b1=4,vara=100)
-```
+# 1: Inflation Data
 
 ```{r}
-parms = mult.wge(c(.975), c(.2,.45), c(-.53))
-parms$model.coef
-gen.arma.wge(160, phi = parms$model.coef, vara=1)
+cpi = read.csv("CPIAUCSL.csv")
+plotts.sample.wge(cpi$CPIAUCSL)
 
+mean(cpi$CPIAUCSL)
+var(cpi$CPIAUCSL)
+
+acf(cpi$CPIAUCSL)
 ```
 
+Revisiting the Consumer Price Index data, we can now begin to assess its suitability for an ARIMA model.
+
+As previously noted, the time series is non-stationary: there is clear evidence of an upward trend which violates the constant mean assumption, and the high, slowly-dampening autocorrelations indicate strong wandering behavior. An ARIMA model may be helpful here, as differencing can help us achieve stationarity.
+
+# 2: Factor Table for S=7
+
+```{r}
+factor.wge(phi=c(rep(0,6),1))
+```
+
+# 3: Categorizing Models
+
+## Model 1
+
+This model has a seasonal factor (1-B^4) and both MA factors are invertible, so this would be an ARUMA with d = 0 and s≠0 (p=0 because no stationary AR component and q = 3 because that's the highest power of the combined MA factors)
+
+```{r}
+factor.wge(phi = c(0, 0, 0, 1))
+
+factor.wge(phi = c(-.3))
+
+factor.wge(phi = c(.6, -.8))
+```
+
+## Model 2
+
+Both the AR and MA factors have absolute reciprocals < 1, indicating a stationary and invertible ARMA model (p=1, q=2 because of highest powers in the AR and MA components).
+
+```{r}
+factor.wge(phi = c(-.3))
+
+factor.wge(phi = c(.6, -.8))
+```
+
+## Model 3
+
+The AR6 component is stationary (absolute reciprocals all <1). 
+
+The (1-B)^2 component has two roots on the unit circle (absolute reciprocal = 1) which confirms that d=2.
+
+The (1-B^12) component has seven roots on the unit circle (absolute reciprocal = 1) and is a seasonal factor with s=12.
+
+The MA component has an absolute reciprocal < 1 so it is invertible. 
+
+This is an ARUMA with d=2 and s=12, p=6 (highest power from the AR6) and q=2 (from the MA side).
+
+```{r}
+factor.wge(phi = c(.1, .99, -.013, -.2078, -.0888, -.00864))
+
+factor.wge(phi = c(2, -1))
+
+factor.wge(phi = c(rep(0, 11), 1))
+
+factor.wge(phi = c(.6, -.8))
+```
+
+# 4: One Year of Wal-Mart Stock Data
+
+```{r}
+wmt = read.csv("wmt.csv")
+plotts.sample.wge(wmt$Close)
+
+wmt_diff = artrans.wge(wmt$Close, phi.tr = 1)
+```
+
+## 
+
+```{r}
+plotts.sample.wge(wmt_diff)
+
+aic5.wge(wmt_diff)
+```
+
+Because the differenced data appears to be a random walk, I would start with an ARIMA() model.
+
+# 5: Key Takeaways
+
+* Non-stationary models include signal plus noise, ARIMA models, and seasonal ARUMA models.
+* ARIMA models require differencing to achieve stationarity.
+* ARUMA models combine AR and MA components with differencing and seasonal factors to create flexible models for complex real-world data
+* Seasonal models have factors like (1-B^12) for monthly data or (1-B^4) for quarterly data.
+* The artrans.wge() function can be used to implement differencing on a time series in R

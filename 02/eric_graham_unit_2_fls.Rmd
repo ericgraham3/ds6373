@@ -1,0 +1,49 @@
+---
+title: "For Live Session 2"
+author: "Eric Graham"
+date: '`r Sys.Date()`'
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+```
+
+```{r, include=FALSE}
+cpi_data = read.csv("CPIAUCSL.csv", header = TRUE)
+str(cpi_data)
+x = cpi_data$CPIAUCSL
+
+cat("x1 =", x[1], "\n")
+cat("x2 =", x[2], "\n") 
+cat("x3 =", x[3], "\n")
+cat("Total observations:", length(x), "\n")
+
+plotts.wge(x)
+acf(x[1:250], plot = TRUE)
+```
+
+# Spectral Density and Frequencies
+
+## Spectral Density 
+
+The spectral density plot shows a peak at frequency 0.0, indicating that there is no periodic cycle.
+
+## Frequencies
+
+No distinct periodic frequencies detected. The peak near zero confirms trending behavior that we would expect from non-stationary data.
+
+```{r}
+parzen.wge(x)
+```
+
+# Relevance to the Series
+
+These results are in alignment with what one would expect for CPI as an inflationary indicator: there are persistent upward price trends rather than seasonal cycles, confirming the trend in the time series. I hope there's a transformation for this because I might have picked the wrong dataset!
+
+# Key Takeaways
+
+* Time series can be analyzed by converting them into sin and cosine expressions using Fourier expansion to identify underlying frequencies
+* The spectral density estimates which frequencies are present in data, with peaks at zero indicating trending behavior.
+* Raw spectral density estimates are noisy and require smoothing (windowing) to reveal meaningful patterns, using a truncation parameter M.
