@@ -1,0 +1,142 @@
+---
+title: "Unit 5 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 2
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+library(tswge)
+```
+
+# Problem 5.5
+
+```{r}
+set.seed(1234)
+x1 = gen.arma.wge(n = 1000, theta = 0.8)
+x2 = gen.arma.wge(n = 1000, theta = 1.25)
+
+plotts.sample.wge(x1)
+plotts.sample.wge(x2)
+```
+
+As we see above, the ACF for $X_t = (1-0.8B)a_t$ and $X_t = (1-1.25B)a_t$ are very similar: both MA(1) models show a strong negative autocorrelation at Lag 1 followed by random noise (due to the randomly-generated realizations).
+
+```{r}
+factor.wge(phi = c(0.8))
+factor.wge(phi = c(1.25))
+```
+
+However, the factor table above shows that the MA(1) model with theta = 0.8 is invertible (the root is outside the unit circle), while the MA(1) model with theta = 1.25 is not invertible (the root is inside the unit circle). So we see it's possible for two MA(1) models to have similar ACFs for different values of theta, and that one of these models might not be invertible.
+
+When considering the model $X_t = (1-0.5B)a_t$, we can infer that its relationship to the model $X_t = (1-2B)a_t$ might be similar: the two models would produce similar ACFs (because the theta values are reciprocal) but the first model would be invertible while the second one wouldn't.
+
+# Problem 5.6
+
+## 5.6(a)
+
+$$X_t - 1.6X_{t-1} + X_{t-2} = (1-0.9B)a_t$$
+
+```{r}
+factor.wge(phi = c(1.6, -1))
+factor.wge(phi = c(0.9))
+```
+
+For this ARMA model, we see that the AR part is non-stationary (absolute reciprocal = 1) and the MA part is invertible (root outside the unit circle).
+
+## 5.6(b)
+
+$$X_t - 2.6X_{t-1} + 1.5X_{t-2} - 0.38X_{t-3} - 0.72X_{t-4} = a_t - 1.9a_{t-1} + 1.7a_{t-2} - 0.72a_{t-3}$$
+
+```{r}
+factor.wge(phi = c(2.6, -1.5, 0.38, 0.72))
+factor.wge(phi = c(1.9, -1.7, 0.72))
+```
+
+For this ARMA model, we see that the first factor of the AR equation is non-stationary (absolute reciprocal > 1) and the MA component is invertible because both absolute reciprical values are < 1.
+
+## 5.6(c)
+
+$$X_t = a_t - 2.9a_{t-1} + 2.7a_{t-2} - 1.52a_{t-3}$$
+
+```{r}
+factor.wge(phi = c(2.9, -2.7, 1.52))
+```
+
+This MA(3) model is non-invertible because the first factor has a root inside the unit circle (absolute reciprocal > 1), even though the second factor has an absolute reciprocal < 1.
+
+## 5.6(d)
+
+$$X_t - 1.9X_{t-1} + 2.5X_{t-2} - 2.24X_{t-3} + 1.36X_{t-4} - 0.576X_{t-5} = a_t - 0.9a_{t-1}$$
+
+```{r}
+factor.wge(phi = c(1.9, -2.5, 2.24, -1.36, 0.576))
+factor.wge(phi = c(0.9))
+```
+
+For this ARMA model, the AR component is stationary (all factors have absolute reciprocals < 1) and the MA component is invertible (absolute reciprocal < 1).
+
+# Problem 5.7
+
+## 5.7(a)
+
+$$X_t - 1.9X_{t-1} + 2.5X_{t-2} - 2.24X_{t-3} + 1.36X_{t-4} - 0.576X_{t-5} = a_t - 0.9a_{t-1}$$
+
+```{r}
+factor.wge(phi = c(1.9, -2.5, 2.24, -1.36, 0.576))
+factor.wge(phi = c(0.9))
+```
+
+## 5.7(b)
+
+$$X_t - 0.3X_{t-1} - 0.9X_{t-2} - 0.1X_{t-3} + 0.8X_{t-4} = a_t + 0.9a_{t-1} + 0.8a_{t-2} + 0.72a_{t-3}$$
+
+```{r}
+factor.wge(phi = c(0.3, 0.9, 0.1, -0.8))
+factor.wge(phi = c(-0.9, -0.8, -0.72))
+```
+
+## 5.7(c)
+
+$$X_t - 0.6X_{t-1} + 0.2X_{t-2} - 0.54X_{t-3} + 0.81X_{t-4} = a_t - 0.99a_{t-1}$$
+
+```{r}
+factor.wge(phi = c(0.6, -0.2, 0.54, -0.81))
+factor.wge(phi = c(0.99))
+```
+
+## Matching to Graph
+
+Based on the factor tables above, I would match the below graph to Model B. The AR component has system frequencies at .06 and .4, which corresponds to peaks on the graph. The MA component has frequencies at 0.25 and 0.5, and the graph shows a pronounced dip at 0.25 and 0.5.
+
+![](5.7_graph.png)
+
+# Problem 5.8
+
+## 5.8(a)
+
+$$(1-1.6B+0.9B^2)(X_t - 20) = a_t$$
+
+```{r}
+x5 = gen.arma.wge(n = 1000, phi = c(1.6, -0.9), mu = 20, sn = 123)
+plotts.sample.wge(x5)
+```
+
+## 5.8(b)
+
+$$(1-1.6B+0.9B^2)(X_t - 20) = (1-0.9B)a_t$$
+
+```{r}
+x6 = gen.arma.wge(n = 1000, phi = c(1.6, -0.9), theta = 0.9, mu = 20, sn = 123)
+plotts.sample.wge(x6)
+```
+
+Both models share the same AR(2) structure so we see similar realizations and a similar ACF structure (sinusoidal shape with decay and periods approximately = 10). The spectral densities of both models show peaks around 0.1. 
+
+However, the impact of the MA term $(1-0.9B)a_t$ is seen in the spectral densities. The ARMA model shows a pronounced dip at 0.00, which isn't reflected in the pure AR model. Most importantly, the dips in the AR(2) model are much more pronounced. The general structure isn't dissimilar, but the introduction of the MA(1) component reduces the low-frequency behavior of the pure AR(2) model. 
+
+This shows that introducing just one MA() component can significantly alter the spectral density of a time series. This should be helpful when we want to model a time series without introducing multiple additional AR() terms.

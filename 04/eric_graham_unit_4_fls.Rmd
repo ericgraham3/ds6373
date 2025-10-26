@@ -1,0 +1,133 @@
+---
+title: "Unit 4 FLS"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  powerpoint_presentation:
+    slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+```
+
+# Activity 1
+
+## Characteristic Equation
+
+Given the model formula:
+
+$$X_t + 0.5X_{t-1} + 0.6X_{t-2} = a_t$$
+
+We can rewrite in standard form:
+
+$$X_t = -0.5X_{t-1} - 0.6X_{t-2} + a_t$$
+
+Our phi values are:
+
+$$\phi_1 = -0.5$$
+
+and
+
+$$\phi_2 = -0.6$$
+
+so our characteristic equation is:
+
+$$1 + 0.5z + 0.6z^2 = 0$$
+
+## Finding Roots
+
+To find the roots, we can use the quadratic formula, because it requires no guesswork, only patience and tolerance for algebra:
+
+$$z = \frac{-0.5 \pm \sqrt{0.25 - 2.4}}{1.2}$$
+
+$$\frac{-0.5 \pm \sqrt{-2.15}}{1.2}$$
+
+$$z = \frac{-0.5 \pm 1.466i}{1.2}$$
+
+So our roots are:
+
+$$\text{z_1 and z_2} = -0.417 \pm 1.222i$$
+
+## Stationarity
+
+To check for stationarity, we can calculate the absolute value of the modulus of the roots:
+
+$$|z| = \sqrt{(-0.417)^2 + (1.222)^2} = \sqrt{1.667} = 1.291$$
+
+Since the absolute value is greater than 1, thus outside the unit circle, the process is stationary.
+
+## System Frequency
+
+To find the frequency, we can use the formula:
+
+$$f_0 = \frac{1}{2\pi} \cos^{-1}\left(\frac{\phi_1}{2\sqrt{-\phi_2}}\right)$$
+
+$$f_0 = \frac{1}{2\pi} \cos^{-1}\left(\frac{-0.5}{2\sqrt{0.6}}\right)$$
+
+$$f_0 = \frac{1}{2\pi} \cos^{-1}(-0.323) = \frac{1.894}{2\pi} = 0.301$$
+
+So the frequency is 0.301.
+
+```{r}
+(1 / (2 * pi)) * acos(-.5 / (2 * sqrt(0.6)))
+```
+
+
+## True ACF and Spectral Density
+
+```{r}
+phi1 = -0.5
+phi2 = -0.6
+set.seed(1234)
+
+x = gen.arma.wge(n = 200, phi = c(phi1, phi2))
+plotts.sample.wge(x)
+```
+
+# Activity 2
+
+## Generate Realizations
+
+```{r}
+set.seed(123)
+
+model1_phi = 0.967
+model2_phi = c(0.5, 0.3)
+model3_phi = c(0.6, -0.2, 0.1)
+model4_phi = c(0.4, 0.3, -0.1, 0.2)
+
+factor.wge(phi = model1_phi)
+factor.wge(phi = model2_phi)
+factor.wge(phi = model3_phi)
+factor.wge(phi = model4_phi)
+
+x1 = gen.arma.wge(n = 200, phi = model1_phi)
+x2 = gen.arma.wge(n = 200, phi = model2_phi)
+x3 = gen.arma.wge(n = 200, phi = model3_phi)
+x4 = gen.arma.wge(n = 200, phi = model4_phi)
+
+plotts.sample.wge(x1)
+plotts.sample.wge(x2)
+plotts.sample.wge(x3)
+plotts.sample.wge(x4)
+```
+
+## Model Selection
+
+Looking at the three models, we note that the AR(1) model has a Abs Recip of nearly 1, which indicates that it is close to non-stationarity. The AR(4) model has three different frequencies, which makes it hard to interpret and leads me to think we might be overfitting. The AR(2) and AR(3) models both show clear stationarity with Abs Recip values safely below 1, and boht have two system frequencies that could represent distinct cycles/trends in the data.
+
+# Key Takeaways
+
+##
+
+• Factor tables key to understanding AR(p) models
+• Stationarity requires all roots be outside the unit circle
+• Roots closest to the unit circle have the strongest influence on realizations, ACFs, and spectral densities
+
+
+```{r}
+
+```
+

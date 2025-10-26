@@ -1,0 +1,182 @@
+---
+title: "Unit 2 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tswge)
+```
+
+# Question 4.1
+
+## 4.1.a (dfw.mon)
+
+```{r}
+data(dfw.mon)
+plotts.sample.wge(dfw.mon)
+```
+
+## 4.1.b (wtcrude2020)
+
+```{r}
+data(wtcrude2020)
+plotts.sample.wge(wtcrude2020)
+```
+
+## 4.1.c (sunspot2.0)
+
+```{r}
+data(sunspot2.0)
+plotts.sample.wge(sunspot2.0)
+```
+
+## 4.1.d (log of the lynx data)
+
+```{r}
+data(llynx)
+plotts.sample.wge(llynx)
+```
+
+## 4.1.e (doppler)
+
+```{r}
+data(doppler)
+plotts.sample.wge(doppler)
+```
+
+## 4.1.f (simulated data 1)
+
+```{r}
+f = gen.arma.wge(n=200, phi=c(2.55,-2.42,.855), mu=10, sn=7285)
+plotts.sample.wge(f)
+```
+
+## 4.1.g (simulated data 2)
+
+```{r}
+g = gen.arma.wge(n=200, phi=c(.65,.62,-.855), mu=50, sn=5698)
+plotts.sample.wge(g)
+```
+
+## 4.1.h (simulated data 3)
+
+```{r}
+h = gen.sigplusnoise.wge(n=250, coef=c(2,1), freq=c(.05,.28), psi=c(1.2,2), phi=.9, sn=278)
+plotts.sample.wge(h)
+```
+
+# Question 4.2
+
+# Question 4.3
+
+## 4.3.a
+
+```{r}
+y = gen.sigplusnoise.wge(n=100, coef=c(2,0), freq=c(.1,0), psi=c(0,0), phi=0, sn=17)
+```
+
+
+$$y_t = 2\cos(2\pi \cdot 0.1 \cdot t) + a_t$$
+
+## 4.3.b
+
+```{r}
+plotts.wge(y)
+```
+
+## 4.3.c
+
+```{r}
+y_highpass_05 = butterworth.wge(y, order=4, type="high", cutoff=0.05)
+plotts.wge(y_highpass_05$x.filt)
+```
+
+## 4.3.d
+
+```{r}
+y_lowpass_05 = butterworth.wge(y, order=4, type="low", cutoff=0.05)
+plotts.wge(y_lowpass_05$x.filt)
+```
+
+## 4.3.e
+
+```{r}
+y_highpass_15 = butterworth.wge(y, order=4, type="high", cutoff=0.15)
+plotts.wge(y_highpass_15$x.filt)
+```
+
+
+## 4.3.f
+
+```{r}
+y_lowpass_15 = butterworth.wge(y, order=4, type="low", cutoff=0.15)
+plotts.wge(y_lowpass_15$x.filt)
+```
+
+## 4.3.g
+
+```{r}
+y_smooth = ma.smooth.wge(y, order=5, plot=FALSE)
+plotts.wge(y_smooth$smooth)
+```
+
+# Question 4.4
+
+```{r}
+x=gen.arma.wge(n=50,phi=c(1.83000,-1.97500,1.82085,-0.97510),sn=2787)
+```
+
+## 4.4.a
+
+```{r}
+plotts.sample.wge(x)
+```
+
+## 4.4.b
+
+```{r}
+x_lowpass_12 = butterworth.wge(x, order=4, type="low", cutoff=0.12)
+plotts.sample.wge(x_lowpass_12$x.filt)
+```
+
+## 4.4.c
+
+```{r}
+x_highpass_12 = butterworth.wge(x, order=4, type="high", cutoff=0.12)
+plotts.sample.wge(x_highpass_12$x.filt)
+```
+
+## 4.4.d
+
+```{r}
+x_lowpass_23 = butterworth.wge(x, order=4, type="low", cutoff=0.23)
+plotts.sample.wge(x_lowpass_23$x.filt)
+```
+
+## 4.4.e
+
+```{r}
+x_highpass_07 = butterworth.wge(x, order=4, type="high", cutoff=0.07)
+plotts.sample.wge(x_highpass_07$x.filt)
+```
+
+## 4.4.f
+
+```{r}
+x_lowpass_30 = butterworth.wge(x, order=4, type="low", cutoff=0.3)
+plotts.sample.wge(x_lowpass_30$x.filt)
+```
+
+## 4.4.g
+
+```{r}
+x_highpass_30 = butterworth.wge(x, order=4, type="high", cutoff=0.3)
+plotts.sample.wge(x_highpass_30$x.filt)
+```
+

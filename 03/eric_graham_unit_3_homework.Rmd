@@ -1,0 +1,77 @@
+---
+title: "Unit 3 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_depth: 3
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tswge)
+```
+
+# 5.1.a: Positive Values of Phi
+
+## Generate Realizations
+
+```{r}
+x1 = gen.arma.wge(n = 80, phi = 0.5, sn = 1)
+x2 = gen.arma.wge(n = 80, phi = 0.8, sn = 1)
+x3 = gen.arma.wge(n = 80, phi = 0.95, sn = 1)
+```
+
+## 5.1.a.i: Print Factor Tables
+
+```{r}
+factor.wge(phi = 0.5)
+factor.wge(phi = 0.8)
+factor.wge(phi = 0.95)
+```
+
+## 5.1.a.ii and iii: Model Behavior and Root
+
+We can see in the below plots that, as phi increases towards 1, the time series becomes more persistent. Extreme values remain either above or below the mean for longer. The ACF shows a slower decay, meaning that past values have more significant influence on future values, and the spectral density plot shows more extreme spikes at zero frequency (which indicates trending/wandering behavior).
+
+This corresponds with the output of factor.wge() above, which shows the roots of the AR equation decreasing towards the unit circle value of 1 as phi (the denominator in the root calculation) increases. As we get closer to phi = 1 (meaning the root = 1, the unit circle) the model becomes less cyclic and eventually non-stationary.
+
+```{r}
+plotts.sample.wge(x1)
+plotts.sample.wge(x2)
+plotts.sample.wge(x3)
+```
+
+# 5.1.b: Negative Values of Phi 
+
+## Generate Realizations
+
+```{r}
+x4 = gen.arma.wge(n = 80, phi = -0.5, sn = 1)
+x5 = gen.arma.wge(n = 80, phi = -0.8, sn = 1)
+x6 = gen.arma.wge(n = 80, phi = -0.95, sn = 1)
+```
+
+## 5.1.b.i: Factor Tables
+
+```{r}
+factor.wge(phi = -0.5)
+factor.wge(phi = -0.8)
+factor.wge(phi = -0.95)
+```
+
+## 5.1.b.ii and iii: Model Behavior and Root
+
+The plots below show that, as phi decreases towards -1 (meaning the absolute value of phi gets closer to 1), the time series values oscillate more: values "flip" from positive to negative at increasing rates and to greater extremes. The ACF shows alternating positive and negative autocorrelations with slower decay, meaning that the oscillating pattern becomes more persistent. The spectral density plot shows more extremes spikes at frequency 0.5, meaning that the oscillations are more extreme and frequent.
+
+This corresponds with the output of factor.wge() above, which shows the roots of the AR equation decreasing towards the unit circle value of 1 as the absolute value of phi (again, the denominator in the root calculation) increases. As we get closer to phi = -1 (meaning the root = -1, the unit circle) the model becomes non-stationary with more explosive oscillations.
+
+For both cases (positive and negative values of phi), as the absolute value of phi approaches 1, the model becomes non-stationary because the variance grows over time and past values become more influential on future values.
+
+```{r}
+plotts.sample.wge(x4)
+plotts.sample.wge(x5)
+plotts.sample.wge(x6)
+```

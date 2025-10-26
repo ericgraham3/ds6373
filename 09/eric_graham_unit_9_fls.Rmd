@@ -1,0 +1,62 @@
+---
+title: "Unit 9 FLS"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+gas = read.csv("texasgasprices.csv")
+head(gas)
+x = gas$Price
+```
+
+# Question 1: Fit Model Using Maximum Likelihood Estimates (MLE)
+
+```{r}
+x.mle = est.ar.wge(x, p = 2, method = 'mle')
+
+x.mle$phi
+x.mle$avar
+```
+
+$$(1 - 1.3812B + 0.4077B^2)X_t = a_t, \quad \hat{\sigma}^2_a = 0.002111$$
+
+# Question 2: Fit Model Using Burg Estimates
+
+```{r}
+x.burg = est.ar.wge(x, p = 2, method = 'burg')
+x.burg$phi
+x.burg$avar
+```
+
+$$(1 - 1.3814B + 0.4058B^2)X_t = a_t, \quad \hat{\sigma}^2_a = 0.002110$$
+The Burg estimates are nearly identical to the MLE estimates! I'm going to be honest I'm not sure if that should worry me or not.
+
+# Question 3: ASE for MLE
+
+```{r}
+x.mle.fore = fore.arma.wge(x, phi = x.mle$phi, n.ahead = 24, lastn = TRUE)
+
+ASE.mle = mean((x[(length(x)-23):length(x)] - x.mle.fore$f)^2)
+ASE.mle
+```
+
+These forecasts are not very accurate! We miss the slight upward slope followed by a rapid decline, and our confidence intervals are quite wide. Our ASE is 0.01743911.
+
+# Question 4: ASE for Burg
+
+```{r}
+x.burg.fore = fore.arma.wge(x, phi = x.burg$phi, n.ahead = 24, lastn = TRUE)
+
+ASE.burg = mean((x[(length(x)-23):length(x)] - x.burg.fore$f)^2)
+ASE.burg
+```
+
+These similar models produced similarly inaccurate forecasts. The Burg model's ASE is 0.01525575.
+
+# Question 5: Model Selection
+
+The Burg model has a slightly lower ASE, so it is marginally more accurate. Since the two models are so similar, I would make this decision solely based on the ASE.

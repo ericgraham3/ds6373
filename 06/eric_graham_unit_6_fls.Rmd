@@ -1,0 +1,23 @@
+---
+title: "Unit 6 FLS"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+```
+
+```{r}
+gen.sigplusnoise.wge(100, b0=2, b1=4,vara=100)
+```
+
+```{r}
+parms = mult.wge(c(.975), c(.2,.45), c(-.53))
+parms$model.coef
+gen.arma.wge(160, phi = parms$model.coef, vara=1)
+
+```
+
