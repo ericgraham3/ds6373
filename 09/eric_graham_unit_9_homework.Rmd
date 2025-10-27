@@ -56,7 +56,7 @@ The Burg estimate's roots are somewhat closer to those of the original model tha
 mle_fit = est.ar.wge(A, p=3, method="mle")
 
 A_mle = gen.arma.wge(n=150, phi=mle_fit$phi, sn=3847)
-mle_plot = plotts.sample.wge(A_ml)
+mle_plot = plotts.sample.wge(A_mle)
 ```
 
 ### Model Fit from Yule-Walker Estimate
@@ -102,3 +102,163 @@ Given that the AIC is lower for the AR(9) model and that it is slightly simpler 
 
 # Question 6.11
 
+```{r}
+ar9_fit = est.ar.wge(sunspot2.0, p=9)
+ar2_fit = est.ar.wge(sunspot2.0, p=2)
+```
+
+```{r}
+roll.win.rmse.wge(sunspot2.0, phi=ar9_fit$phi, horizon=10)
+roll.win.rmse.wge(sunspot2.0, phi=ar2_fit$phi, horizon=10)
+```
+
+The AR(9) model has a lower Rolling Window RMSE than the AR(2) model across a 10-year horizon. The histograms of RMSE visualize this difference. 
+
+I note that Table 6.18 compares RMSEs for 10 year forecasts starting in 1980, 1990, 2000, and 2010. Forecasts originating in 2000 showed that the AR(2) model had lower RMSE, but for the other three origin points the AR(9) had lower RMSE. The roll.win.rmse.wge() function uses all available data to compute RMSEs, which (in my opinion) confirms the findings of the origin-specific forecasts that AR(9) generally forecasts sunspot activity better than AR(2).
+
+# Question 6.12
+
+## 6.12.a: sunspot2.0
+
+### PACF
+
+```{r}
+pacf(sunspot2.0)
+```
+
+### AIC Based on MLE Estimate
+
+```{r}
+aic5.ar.wge(sunspot2.0, p=0:15, type="aic", method="mle")
+```
+
+### AIC Based on Burg Estimate
+
+```{r}
+aic5.ar.wge(sunspot2.0, p=0:15, type="aic", method="burg")
+```
+
+### AIC Based on Yule-Walker Estimate
+
+```{r}
+aic5.ar.wge(sunspot2.0, p=0:15, type="aic", method="yw")
+```
+
+## 6.12.b: log(base 10) lynx
+
+### Data Transformation
+
+```{r, results='hide'}
+data(lynx)
+lynx_log = log10(lynx)
+```
+
+### PACF
+
+```{r}
+pacf(lynx_log)
+```
+
+### AIC Based on MLE Estimate
+
+```{r}
+aic5.ar.wge(lynx_log, p=0:15, type="aic", method="mle")
+```
+
+### AIC Based on Burg Estimate
+
+```{r}
+aic5.ar.wge(lynx_log, p=0:15, type="aic", method="burg")
+```
+
+### AIC Based on Yule-Walker Estimate
+
+```{r}
+aic5.ar.wge(lynx_log, p=0:15, type="aic", method="yw")
+```
+
+## 6.12.c: Example 6.3 AR(4)
+
+### Data Generation
+
+```{r, results='hide'}
+ar4 = gen.arma.wge(n=100, phi=c(2.76,-3.76,2.6,-.89), sn=468)
+```
+
+### PACF
+
+```{r}
+pacf(ar4)
+```
+
+### AIC Based on MLE Estimate
+
+```{r}
+aic5.ar.wge(ar4, p=0:15, type="aic", method="mle")
+```
+
+### AIC Based on Burg Estimate
+
+```{r}
+aic5.ar.wge(ar4, p=0:15, type="aic", method="burg")
+```
+
+### AIC Based on Yule-Walker Estimate
+
+```{r}
+aic5.ar.wge(ar4, p=0:15, type="aic", method="yw")
+```
+
+## 6.12.d: dfw.mon
+
+### PACF
+
+```{r}
+data(dfw.mon)
+pacf(dfw.mon)
+```
+
+### AIC Based on MLE Estimate
+
+```{r}
+aic5.ar.wge(dfw.mon, p=0:15, type="aic", method="mle")
+```
+
+### AIC Based on Burg Estimate
+
+```{r}
+aic5.ar.wge(dfw.mon, p=0:15, type="aic", method="burg")
+```
+
+### AIC Based on Yule-Walker Estimate
+
+```{r}
+aic5.ar.wge(dfw.mon, p=0:15, type="aic", method="yw")
+```
+
+## 6.12.e: wtcrude2020
+
+### PACF
+
+```{r}
+data(wtcrude2020)
+pacf(wtcrude2020)
+```
+
+### AIC Based on MLE Estimate
+
+```{r}
+aic5.ar.wge(wtcrude2020, p=0:15, type="aic", method="mle")
+```
+
+### AIC Based on Burg Estimate
+
+```{r}
+aic5.ar.wge(wtcrude2020, p=0:15, type="aic", method="burg")
+```
+
+### AIC Based on Yule-Walker Estimate
+
+```{r}
+aic5.ar.wge(wtcrude2020, p=0:15, type="aic", method="yw")
+```
