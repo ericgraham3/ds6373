@@ -1,0 +1,95 @@
+---
+title: "Unit 10 FLS"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+library(orcutt)
+```
+
+# Dataset: US Accidental Deaths (1973-1978)
+
+```{r}
+data(USAccDeaths)
+plot = plotts.sample.wge(USAccDeaths)
+```
+
+In examining the monthly accidental deaths in the US from 1973 to 1978, we see a clear seasonal cycle and slowly dampening autocorrelations. This indicates a non-stationary realization. Let's see what happens when we try to model it!
+
+# ARIMA Model
+
+```{r}
+deaths.d1 = artrans.wge(USAccDeaths, phi.tr = 1)
+```
+
+After one difference, the seasonal pattern is still visible, but we see the autocorrelations drop off more quickly. 
+
+# 
+
+```{r}
+aic5.wge(deaths.d1, p = 0:5, q = 0:2)
+```
+
+```{r, results='hide'}
+est.arma.wge(deaths.d1, p = 3, q = 1)
+```
+
+AIC5 suggests an ARMA(3,2) model. Estimating the model equation provides us with phi1 = .784, phi2 = .033, phi3 = -.261, theta = 0.99 and estimated white noise variance of 443796.1.
+
+$$(1-B)(1 - 0.784B - 0.033B^2 + 0.262B^3)X_t = (1 - 0.999B)a_t \quad \hat{\sigma}^2_a = 443,796$$
+
+# Seasonal Model
+
+```{r}
+deaths.d12 = artrans.wge(USAccDeaths, phi.tr = c(rep(0,11), 1))
+
+```
+
+To account for the seasonal pattern, we apply a seasonal difference of $(1-B^12)$. We see the autocorrelations drop off quickly, indicating stationarity.
+
+#
+
+```{r}
+aic5.wge(deaths.d12, p = 0:5, q = 0:2)
+```
+
+
+```{r, results='hide'}
+est.arma.wge(deaths.d12, p = 1, q = 1)
+```
+
+AIC5 suggests an ARMA(1,1) model for this differenced data. Estimating the model equation provides us with phi1 = .929, theta1 = 0.423 and estimated white noise variance of 118524.4. Note the improved AIC that we obtain by including the seasonal difference!
+
+$$(1-B^{12})(1 - 0.929B)X_t = (1 - 0.423B)a_t \quad \hat{\sigma}^2_a = 118,524.4$$
+
+# Signal Plus Noise with Cochran-Orcutt
+
+Though we have found a seasonal model that appears to fit the data well, let's see what happens when we try to fit a model using linear regression.
+
+```{r}
+t = 1:length(USAccDeaths)
+df = data.frame(x = USAccDeaths, t = t)
+fit = lm(x ~ t, data = df)
+summary(fit)
+```
+
+OLD regression finds no linear trend in the data (p = 0.1215) but we need to use the Cochran-Orcutt procedure to account for autocorrelated errors.
+
+#
+
+```{r}
+cfit = cochrane.orcutt(fit)
+summary(cfit)
+```
+
+The Cochran-Orcutt method accounts for the autocorrelated errors and finds an even higher p-value (0.6185), confirming that no linear trend is present. 
+
+# Key Takeaways
+
+* Nonstationary models require some degree of differencing to make them stationary so a model can be fit. 
+* Regular differencing (1-B) can be used once or even twice to remove trend, while seasonal differencing (1-B^s) can be used to account for seasonal patterns.
+* Signal Plus Noise models can be fit using linear regression, but autocorrelated errors must be accounted for using the Cochran-Orcutt method.
