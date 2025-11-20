@@ -1,0 +1,130 @@
+---
+title: "Unit 11 FLS"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: powerpoint_presentation
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+```
+
+# Sunspot Data
+
+## Sunspot Questions 1 and 2 
+
+```{r, results='hide'}
+sunspot = read.csv("SN_y_tot_V2.0.csv", sep = ";", header = FALSE)
+plotts.wge(sunspot[,2])
+acf(sunspot[,2])
+```
+
+The sunspot data appears to be stationary: there is no visible trend, we see consistent variance over time, and the autocorrelations exhibit a damping sinusoidal pattern which is characteristic of cyclic, stationary data.
+
+## Estimating p and q (Question 3)
+
+```{r, results='hide'}
+aic5.wge(sunspot[,2], p = 0:12, q = 0:12)
+```
+
+Our AIC 5 table suggests an ARMA(10,10) model, but when we fit it we see that some of our MA roots lie exactly on the unit circle, meaning they aren't invertible. 
+
+```{r, results='hide'}
+fit_prelim = est.arma.wge(sunspot[,2], p=10, q=10)
+```
+
+## Fitting AR(9) Model (Question 4)
+
+Because the AIC values were so close for a number of models, I settled on the simplest, an AR(9).
+
+```{r, results='hide'}
+fit = est.ar.wge(sunspot[,2], p=9)
+```
+
+$$(1 - 1.1672B + 0.4095B^2 + 0.1363B^3 - 0.1031B^4 + 0.0671B^5 - 0.0066B^6 - 0.0165B^7 + 0.0430B^8 - 0.2182B^9)X_t = a_t$$
+
+## ASE for AR(9) (Question 5)
+
+```{r, results ='hide'}
+fit = est.ar.wge(sunspot[,2], p=9)
+forecasts = fore.arma.wge(sunspot[,2], phi=fit$phi, n.ahead=15, lastn=TRUE)
+ASE = mean((sunspot[(length(sunspot[,2])-14):length(sunspot[,2]), 2] - forecasts$f)^2)
+ASE
+```
+
+Forecasting the last 15 years of sunspot data with our AR(9) model produces an ASE of 657.2868.
+
+## Seasonal Model and Model Preference (Questions 6 and 7)
+
+```{r, results='hide'}
+s = 11
+
+seasonal_diff = artrans.wge(sunspot[,2], phi.tr=c(0,0,0,0,0,0,0,0,0,0,1))
+plotts.sample.wge(seasonal_diff)
+
+aic_seasonal = aic5.wge(seasonal_diff, p=0:10, q=0:4)
+aic_seasonal[which.min(aic_seasonal$aic),]
+
+fit_seasonal = est.arma.wge(seasonal_diff, p=10, q=3)
+forecasts_seasonal = fore.aruma.wge(sunspot[,2], phi=fit_seasonal$phi, theta=fit_seasonal$theta, s=s, n.ahead=15, lastn=TRUE)
+
+ASE_seasonal = mean((sunspot[(length(sunspot[,2])-14):length(sunspot[,2]), 2] - forecasts_seasonal$f)^2)
+ASE_seasonal
+```
+
+For a seasonal model, aic5 suggests an ARMA(10,3) model after applying a seasonal difference of 11. Fitting this model and forecasting the last 15 years of data produces an ASE of 1653.5, which is worse than our non-seasonal AR(9) model. Because the AR(9) is simpler to interpret and has a lower AIC, I would choose that one, which is counterintuitive because my understanding is that sunspots are seasonal in nature.
+
+## 10 Year Forecast (Question 8)
+
+```{r, results='hide'}
+fit = est.ar.wge(sunspot[,2], p=9)
+forecasts = fore.arma.wge(sunspot[,2], phi=fit$phi, n.ahead=10, limits=TRUE)
+```
+
+# Accuspike Data
+
+## Plot and Stationarity
+
+```{r, results='hide'}
+accuspike = read.csv("accuspike.csv", header = TRUE)
+plotts.wge(accuspike$Active.Users)
+head(accuspike)
+```
+
+## AIC Model Selection
+
+```{r}
+aic_accuspike = aic5.wge(accuspike$Active.Users, p=0:10, q=0:4)
+```
+
+AIC5 suggests an AR(10) model.
+
+## Fitting AR(10) Model
+
+```{r, results='hide'}
+fit_accuspike = est.ar.wge(accuspike$Active.Users, p=10)
+```
+
+$$
+(1 - 0.6043B - 0.0362B^2 + 0.0143B^3 - 0.0440B^4 + 0.0857B^5 - 0.1918B^6 - 0.1622B^7 - 0.0126B^8 + 0.1881B^9 + 0.1311B^{10})X_t = a_t
+$$
+
+## ASE for AR(10)
+
+```{r, results='hide'}
+fit = est.ar.wge(accuspike$Active.Users, p=10)
+forecasts_last7 = fore.arma.wge(accuspike$Active.Users, phi=fit$phi, n.ahead=7, lastn=TRUE)
+ASE = mean((accuspike[(length(accuspike$Active.Users)-6):length(accuspike$Active.Users), 2] - forecasts_last7$f)^2)
+ASE
+```
+
+Forecasting the last seven days, we get an ASE of 2289.506.
+
+## Forecasting Next Seven Days
+
+```{r, results ='hide'}
+fit = est.ar.wge(accuspike$Active.Users, p=10)
+forecasts_next7 = fore.arma.wge(accuspike$Active.Users, phi=fit$phi, n.ahead=7, limits=TRUE)
+```
+

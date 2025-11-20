@@ -1,0 +1,167 @@
+---
+title: "Unit 13 FLS"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+    powerpoint_presentation:
+      slide_level: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+library(nnfor)
+library(vars)
+```
+
+# Part 1: Comparing VAR and MLP with Sunspot/Melanoma Data
+
+```{r, include = FALSE}
+melanoma = c(1.0, 0.9, 0.8, 1.4, 1.2, 1.0, 1.5, 1.9, 1.5, 1.5, 1.5, 1.6, 1.8, 2.8, 2.5, 2.5, 2.4, 2.1, 1.9, 2.4, 2.4, 2.6, 2.6, 4.4, 4.2, 3.8, 3.4, 3.6, 4.1, 3.7, 4.2, 4.1, 4.1, 4.0, 5.2, 5.3, 5.3)
+sunspot = c(40, 115, 100, 80, 60, 40, 23, 10, 10, 25, 75, 145, 130, 130, 80, 65, 20, 10, 5, 10, 60, 190, 180, 175, 120, 50, 35, 20, 10, 15, 30, 60, 105, 105, 105, 80, 65)
+
+mel.67 = melanoma[1:32]
+sun.67 = sunspot[1:32] 
+
+mel.test = melanoma[33:37]
+sun.test = sunspot[33:37]
+```
+
+## VAR Model
+
+```{r, results = 'hide'}
+X = cbind(mel.67, sun.67)
+VARselect(X, lag.max = 6, type = "const", season = NULL, exogen = NULL)
+
+lsfit = VAR(X, p = 4, type = 'const')
+preds = predict(lsfit, n.ahead = 5)
+
+plot(seq(1, 37, 1), melanoma, type = "b", ylim = c(0, 6))
+points(seq(33, 37, 1), preds$fcst$mel.67[1:5, 1], type = "b", pch = 15)
+
+fanchart(preds)
+
+VAR_forecasts = preds$fcst$mel.67[1:5, 1]
+ASE_VAR = mean((mel.test - VAR_forecasts)^2)
+ASE_VAR
+```
+
+The VAR model for the melanoma produced an ASE of 0.1095, which is very low. Our forecasts of the last five years track the actual data quite well. Fancharts show that we have very good confidence predicting sunspots, but not quite as much confidence on sunspots predicting melanoma.
+
+## MLP Model
+
+```{r, results = 'hide'}
+set.seed(1234)
+
+melTrain = ts(mel.67, frequency = 1, start = 1936)
+
+sunFull_df = data.frame(sun = ts(sunspot))
+
+fit.mlp = mlp(melTrain, xreg = sunFull_df, xreg.lags = list(sun = 2), reps = 50, comb = "mean")
+
+fit.mlp
+plot(fit.mlp)
+
+fore.mlp = forecast(fit.mlp, h = 5, xreg = sunFull_df)
+plot(fore.mlp)
+
+ASE_MLP = mean((mel.test - fore.mlp$mean)^2)
+ASE_MLP
+```
+
+In terms of ASE, MLP underperforms VAR signfificantly with an ASE of .5982. We see a high level of variance in the forecasts, indicating that the simple linear relationship between sunspots and melanoma is not being captured well by the more complex MLP model. The VAR model also remains more interpretable. 
+
+# Part 2: VAR vs MLP for Cardiac/Pollution Data
+
+```{r, include = FALSE}
+cmort = read.csv("la_cmort_study.csv")
+
+cmort_train = cmort[1:456, ]
+cmort_test = cmort[457:508, ]
+```
+
+## VAR Model
+
+```{r, results = 'hide'}
+VARselect(cbind(cmort_train$cmort, cmort_train$part, cmort_train$temp), 
+          lag.max = 10, season = 52, type = "both")
+
+fit_var = VAR(cbind(cmort_train$cmort, cmort_train$part, cmort_train$temp), 
+              p = 2, season = 52, type = "both")
+
+preds_var = predict(fit_var, n.ahead = 52)
+
+plot(seq(1, 508, 1), cmort$cmort, type = "l", xlim = c(0, 560), 
+     ylab = "Cardiac Mortality", main = "VAR(2) 52 Week Forecast")
+lines(seq(457, 508, 1), preds_var$fcst$y1[, 1], type = "l", col = "red")
+
+fanchart(preds_var)
+
+ASE_VAR = mean((cmort_test$cmort - preds_var$fcst$y1[, 1])^2)
+ASE_VAR
+```
+
+Our VAR(2) model with seasonal component of 52 produced an ASE of 40.3. This is moderately good, and our forecasts track well with the test dataset. The fancharts show relatively tight confidence intervals for the forecasts.
+
+## MLP Model
+
+```{r, results = 'hide'}
+
+set.seed(1234)
+
+cmort_ts = ts(cmort_train$cmort, frequency = 52)
+
+xreg_full = data.frame(temp = ts(cmort$temp), 
+                       part = ts(cmort$part))
+
+fit.mlp = mlp(cmort_ts, xreg = xreg_full, reps = 50, comb = "mean") # this one got the CPU fan to speed up!
+
+fit.mlp
+plot(fit.mlp)
+
+fore.mlp = forecast(fit.mlp, h = 52, xreg = xreg_full)
+plot(fore.mlp)
+
+ASE_MLP = mean((cmort_test$cmort - fore.mlp$mean)^2)
+ASE_MLP
+```
+
+That ASE of 794.46 has me worrying that I coded this thing wrong! Taking it at face value, it is a sign that our model is really not predicting the test data well, we may have overfit (62 inputs is a lot for our amount of observations). The forecasts reflect this as well, with a wild amount of variance over time. Once again, VAR is the winner, both in terms of predictive performance and interpretability.
+
+# Part 3: Historical Inflation Data with MLP
+
+```{r, include = FALSE}
+cpi_data = read.csv("CPIAUCSL.csv", header = TRUE)
+n = length(cpi_data$CPIAUCSL)
+n_train = n - 12
+n_test = 12
+
+cpi_train = cpi_data$CPIAUCSL[1:n_train]
+cpi_test = cpi_data$CPIAUCSL[(n_train + 1):n]
+
+cpi_train_ts = ts(cpi_train, frequency = 12)
+```
+
+```{r, results = 'hide'}
+set.seed(1234)
+
+fit.mlp = mlp(cpi_train_ts, reps = 50, comb = "mean")
+
+fit.mlp
+plot(fit.mlp)
+
+fore.mlp = forecast(fit.mlp, h = n_test)
+plot(fore.mlp)
+
+ASE_MLP = mean((cpi_test - fore.mlp$mean)^2)
+ASE_MLP
+```
+
+This dataset has the advantage of being a univariate time series, and we see a very good ASE of 3.46 and the forecasts capture the upward linear trend quite well. The MLP model seems to be appropriate for this data, as evidenced by the moderate number of inputs relative to the number of observations.
+
+# Key Takeaways
+
+* MLPs excel with complex multivariate problems when enough data exists.
+* In comparing VAR and MLP models on multivariate time series data, VAR often outperforms MLP, both in terms of predictive power and interpretability.
+* MLPs need sufficient data to estimate parameters, and can easily overfit when the number of inputs is large relative to the number of observations.
+* The interpretability advantage of VAR models is significant and could really come in handy when doing explanatory analysis. MLPs are more black boxes, and in problems where they perform well are powerful predictive tools.
