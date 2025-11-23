@@ -1,0 +1,167 @@
+---
+title: "Unit 11 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    df_print: paged
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tswge)
+```
+
+# 9.1
+
+```{r}
+ar4=gen.arma.wge(n=100,phi=c(2.76,-3.76,2.6,-.89),sn=463)
+plots = plotts.sample.wge(ar4)
+```
+
+First, we fit the AR(4) model using MLE.
+
+```{r}
+est_ml = est.ar.wge(ar4, p = 4, method = "mle")
+```
+
+## a: Test Residuals for White Noise
+
+We can first visually examine the residuals to see if they appear to be white noise, which they do! The autocorrelations are all within the confidence bounds and the realization of the residuals itself appears to be random.
+
+```{r}
+res_plot = plotts.sample.wge(est_ml$res)
+
+res_acf = acf(est_ml$res, lag.max=50)
+```
+
+We can also use the Ljung-Box test to test for whiteness. The p-values fr k=24 and k=48 are both above 0.05, indicating that we fail to reject the null hypothesis of whiteness.
+
+```{r}
+ljung.wge(est_ml$res, p=4, K=24)
+
+ljung.wge(est_ml$res, p=4, K=48)
+```
+
+## b: Forecasting
+
+### RMSE
+
+```{r}
+k = 10
+
+n = length(ar4)
+n_train = n - k
+train_data = ar4[1:n_train]
+test_data = ar4[(n_train + 1):n]
+
+fit_train = est.ar.wge(train_data, p=4, method="mle")
+
+fore_test = fore.arma.wge(train_data, phi=fit_train$phi, 
+                          n.ahead=k, lastn=TRUE, limits=TRUE)
+
+rmse = sqrt(mean((test_data - fore_test$f)^2))
+rmse
+
+```
+
+An RMSE of 23.69066 is moderate, indicating that the forecasts are fairly accurate.
+
+### Rolling-Window RMSE
+
+```{r}
+rolling_rmse = roll.win.rmse.wge(ar4, horizon=k, phi=est_ml$phi)
+```
+
+Our much-improved rolling-window RMSE of 7.638 indicats that the model performs generally well!
+
+## c: Compare to Simulated Realizations
+
+```{r, results='hide'}
+set.seed(1234)
+sim = gen.arma.wge(n=100, phi=est_ml$phi, vara=est_ml$avar)
+```
+
+
+```{r}
+par(mfrow=c(2,1))
+plotts.wge(ar4, main="Original AR(4) Realization")
+plotts.wge(sim, main="Simulated Realization from Fitted Model")
+```
+
+This is exactly what we would expect to see! Both have the same underlying patterns, but are not exact because they're driven by different random white noise processes.
+
+# 9.2
+
+First, we re-create the seasonal AR(2) model from Chapter 7 with seasonality s=4.
+
+```{r}
+xB=gen.arima.wge(n=100,phi=c(1.3,-.65),s=4,sn=290)
+sB4=artrans.wge(xB,phi.tr=c(0,0,0,1))
+est = est.ar.wge(sB4,p=2)
+```
+
+## a: Check Residuals for White Noise
+
+Again, a visual examination of the residuals suggests that they are white noise: random realization, autocorrelations within confidence bounds.
+
+```{r}
+res_plot = plotts.sample.wge(est$res)
+
+res_acf = acf(est$res, lag.max=50)
+```
+
+We can confirm this with the Ljung-Box Test, which finds very high p=values at k=24 and k=48, indicating that the residuals are indeed white noise.
+
+```{r}
+ljung.wge(est$res, p=2, K=24)
+
+ljung.wge(est$res, p=2, K=48)
+```
+
+## b: Forecasting Performance
+
+### RMSE
+
+```{r, results='hide'}
+k = 10
+
+n = length(xB)
+n_train = n - k
+train_data = xB[1:n_train]
+test_data = xB[(n_train + 1):n]
+
+fit_train = est.ar.wge(artrans.wge(train_data, phi.tr=c(0, 0, 0, 1)), p=2)
+
+fore_test = fore.aruma.wge(train_data, phi=fit_train$phi, s=4, n.ahead=k, lastn=TRUE, limits=TRUE)
+
+rmse = sqrt(mean((test_data - fore_test$f)^2))
+rmse
+```
+
+Our RMSE of 15.60307 indicates good forecast accuracy.
+
+### Rolling-Window RMSE
+
+```{r}
+rolling_rmse = roll.win.rmse.wge(xB, horizon=k, s=4, phi=est$phi)
+```
+
+Again, the rolling-window RMSE is much better at 1.869, which is very good. If only predicting the future were always this easy!
+
+## c: Compare to Simulated Realizations
+
+```{r}
+set.seed(1234)
+sim_data = gen.arma.wge(n=100, phi=est$phi, vara=est$avar)
+
+par(mfrow=c(2,1))
+plotts.wge(sB4, main="Original Differenced Data")
+plotts.wge(sim_data, main="Simulated Realization from Fitted Model")
+```
+
+As expected, the simulated realization based on the fitted model displays the same underlying patterns, but "realized" differently due to the different white noise process driving it.

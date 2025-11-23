@@ -1,0 +1,226 @@
+---
+title: "Unit 12 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    df_print: paged
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tswge)
+library(vars)
+library(nnfor)
+library(orcutt)
+```
+
+# ARMA/ARIMA vs. MLP for Global Temperatures
+
+```{r}
+data("global.temp")
+global = global.temp
+set.seed(1234)
+```
+
+# Data Overview
+
+```{r, results='hide'}
+length(global)
+n = length(global)
+n_train = n - 12
+n_test = 12
+
+global_train = global[1:n_train]
+global_test = global[(n_train + 1):n]
+
+plot = plotts.sample.wge(global_train)
+```
+
+As seen in the plots above, the data is clearly non-stationary: there is an obvious upward trend and the ACF decays very slowly. The spectral density plot also shows a peak near zero frequency, indicating trending behavior.
+
+# ARIMA Models
+
+## Differencing to Achieve Stationarity
+
+We can first try to difference the data to achieve stationarity.
+
+```{r, results ='hide'}
+global_train_diff1 = artrans.wge(global_train, phi.tr = 1)
+plotts.sample.wge(global_train_diff1)
+acf(global_train_diff1)
+```
+
+A difference of 1 has helped the data quite a bit! We see relatively constant mean/variance in the realization and the ACF cuts off quickly, with almost all autocorrelations within the confidence bounds (and those outside the bounds are still very close). 
+
+I also tested differences of 2, 3, and 4 but I will spare you those plots as they looked signficantly worse. However, that will come into play later when we run afoul of the forecasting issus with ARIMA( p, 1, q) models.
+
+## Model Selection With AIC
+
+```{r}
+aic5.wge(global_train_diff1, p = 0:8, q = 0:3, type = "aic")
+```
+
+Based on AIC, the best model appears to be an ARMA(3,2) on the differenced data (an ARIMA(3,1,2) on the original data). Interestingly, the second best model was an MA(2) (an ARIMA (0,1,2) on the original data), whcih would be much more parsimonious, so we will take a look at that as well.
+
+## Fitting ARIMA Models
+
+### Fitting ARIMA(3,1,2)
+
+```{r}
+fit_arma32 = est.arma.wge(global_train_diff1, p = 3, q = 2)
+```
+
+We see that the ARIMA(3,1,2) has roots outside the unit circle, indicating stationarity in the AR component and invertibility in the MA component.
+
+### Fitting ARIMA(0,1,2)
+
+```{r, results='hide'}
+fit_ma2 = est.arma.wge(global_train_diff1, p = 0, q = 2)
+fit_ma2$theta
+```
+
+## Testing Residuals for White Noise
+
+As shown below, both ARIMA models return p values of greater than 0.05 for the Ljung-Box test at k=24 and k=48, indicating that we fail to reject the null hypothesis of white noise residuals.
+
+### Residual Check on ARIMA(3,1,2)
+
+```{r}
+ljung.wge(fit_arma32$res, p = 3, q = 2, K = 24)
+ljung.wge(fit_arma32$res, p = 3, q = 2, K = 48)
+```
+
+### Residual Check on ARIMA(0,1,2)
+
+```{r}
+ljung.wge(fit_ma2$res, p = 0, q = 2, K = 24)
+ljung.wge(fit_ma2$res, p = 0, q = 2, K = 48)
+```
+
+## Forecasting With ARIMA Models
+
+### Forecasting ARIMA(3,1,2)
+
+```{r}
+fore_arma32 = fore.arima.wge(global_train, phi = fit_arma32$phi, theta = fit_arma32$theta, d = 1, n.ahead = 12, lastn = FALSE, limits = FALSE)
+```
+
+We see that the forecasts don't track the data well at all! This is a feature of ARIMA(p, 1, q) models where the forecasts tend to flatten out over longer horizons. Here we see the AR component mimics the up-down pattern of the test data, but the overall level is very flat compared to the recent trend.
+
+### RMSE for ARIMA(3,1,2)
+
+```{r, results='hide'}
+ASE_ARMA32 = mean((global_test - fore_arma32$f)^2)
+RMSE_ARMA32 = sqrt(ASE_ARMA32)
+ASE_ARMA32
+RMSE_ARMA32
+```
+
+The ARIMA(3,1,2) model produces an ASE of 0.03532572 and an RMSE of 0.1879514, which sound great, but in the context of the poor forecasts it is apparent that this is just due to the small unit of measurement, and perhaps these are not great RMSE values!
+
+### Forecasting ARIMA(0,1,2)
+
+```{r}
+fore_ma2 = fore.arima.wge(global_train, theta = fit_ma2$theta, d = 1, n.ahead = 12, lastn = FALSE, limits = FALSE)
+
+```
+
+Here we see a truly flat forecast, as the MA component has no ability to mimic the up-down pattern of the test data. However, given the small scale of the data, this may still produce deceptively good RMSE values.
+
+### RMSE for ARIMA(0,1,2)
+
+```{r, results='hide'}
+ASE_MA2 = mean((global_test - fore_ma2$f)^2)
+RMSE_MA2 = sqrt(ASE_MA2)
+ASE_MA2
+RMSE_MA2
+```
+
+The ARIMA(0,1,2) model produces an ASE of 0.0343531 and an RMSE of 0.1853461, which is very similar to the ARIMA(3,1,2) results.
+
+# Signal Plus Noise Model
+
+In search of a better "best" model to compete with the MLP Model, we tried a signal plus noise model, in an attempt to capture the recent upward trend more accurately.
+
+## Fitting SPN Model
+
+```{r}
+n = length(global_train)
+t = 1:n
+
+lm_model = lm(global_train ~ t)
+residuals_lm = global_train - lm_model$coefficients[1] - lm_model$coefficients[2]*t
+
+aic_res = aic.wge(residuals_lm, p = 0:8)
+ar_fit = est.ar.wge(residuals_lm, p = aic_res$p)
+
+t_trans = artrans.wge(t, phi.tr = ar_fit$phi)
+y_trans = artrans.wge(global_train, phi.tr = ar_fit$phi)
+lm_co = lm(y_trans ~ t_trans)
+summary(lm_co)
+```
+
+The signal-plus-noise model identified a statistically significant positive linear trend of 0.0044 degreesper year ip < 0.001) with AR(4) correlated residuals. The rtransformed realization and autocorrelations are consistent with a stationary process. 
+
+## Forecasting With SPN Model
+
+```{r}
+fore_spn = fore.sigplusnoise.wge(global_train, linear = TRUE, max.p = 8, n.ahead = 12, lastn = FALSE, limits = FALSE)
+```
+
+```{r, results ='hide'}
+ASE_SPN = mean((global_test - fore_spn$f)^2)
+RMSE_SPN = sqrt(ASE_SPN)
+ASE_SPN
+RMSE_SPN
+```
+
+Unfortunately, the SPN model also fails to forecast with acceptable accuracy, in fact forecasting a downward trend! We see an ASE of 0.0644309 and an RMSE of 0.2538324, both worse than the previous ARIMA models.
+
+# MLP Model
+
+The MLP neural network offers a flexible, non-linear approach to modeling time series data that may capture patterns in the data that the prior models couldn't. Neiral networks are known for predictive power in complex settings, so maybe it will do better than the ARIMA and SPN models.
+
+## Fitting MLP Model
+
+The MLP automatically selected lags 1 and 4 as inputs, feeding them through 5 hidden nodes to produce forecasts, with an ensemble of 50 networks combined. The MSE of 0.0105 is low, but that doesn't guarantee good predictive performance. 
+
+```{r}
+set.seed(1234)
+
+global_train_ts = ts(global_train, frequency = 1)
+
+fit.mlp = mlp(global_train_ts, reps = 50, comb = "mean")
+
+fit.mlp
+plot(fit.mlp)
+```
+
+## Forecasting With MLP Model
+
+```{r}
+fore.mlp = forecast(fit.mlp, h = 12)
+plot(fore.mlp)
+```
+
+The MLP forecast shows an initial sharp dip followed by a leveling off and gradual decline, failing to capture the persistent upward trend in the data and behaving more like the ARIMA and SPN models. 
+
+### RMSE for MLP Model
+
+```{r, results='hide'}
+ASE_MLP = mean((global_test - fore.mlp$mean)^2)
+RMSE_MLP = sqrt(ASE_MLP)
+ASE_MLP
+RMSE_MLP
+```
+
+The MLP model produces an ASE of 0.04892615 and an RMSE of 0.2211926, which is better than the SPN model but worse than the ARIMA models.
+
+# Final Thoughts
+
+In this case, the MLP model did not outperform the traditional time series models. While the ARIMA models produced better RMSE, there is a clear disconnect between the forecasts and the actual test data. This could be attributed both the non-stationary nature of the data and the temporal scope of the problem. All of these models are being fit to hundreds of years of data which are pulling them back from capturing the recent upward trend in global temperatures. It is a difficult dataset to model.

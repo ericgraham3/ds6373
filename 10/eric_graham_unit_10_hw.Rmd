@@ -1,0 +1,312 @@
+---
+title: "Unit 10 Homework"
+author: "Eric Graham"
+date: 11/22/25
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    toc_depth: 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tswge)
+library(orcutt)
+```
+
+# 7.5: Pennsylvania Temperatures
+
+```{r}
+data(patemp)
+```
+
+## a: Visualize the Data
+
+```{r}
+temp_plot = plotts.sample.wge(patemp)
+parzen = parzen.wge(patemp)
+```
+
+
+## b: Burg Estimation
+
+### p = 14
+
+```{r}
+burg14 = est.ar.wge(patemp, p = 14, method = 'burg')
+```
+
+### p = 16
+
+```{r}
+burg16 = est.ar.wge(patemp, p = 16, method = 'burg')
+```
+
+### p = 18
+
+```{r}
+burg18 = est.ar.wge(patemp, p = 18, method = 'burg')
+```
+
+## c: Evidence of Seasonality
+
+Yes, there is evidence of a $(B-1^{12})$ in the factor tables! We see multiple factors with absolute recipricols very close to 1, and system frequencies very close to 1/12 (0.083). We also see in the parzen plot a peak at frequency 0.083, indicating a seasonal pattern with period 12.
+
+## d: Seasonal Differencing and Model Selection
+
+
+### Differencing
+
+```{r}
+patemp_diff = artrans.wge(patemp, phi.tr = c(rep(0, 11), 1))
+diff_plot = plotts.sample.wge(patemp_diff)
+```
+
+We now see that the seasonal pattern is gone: autocorrelations drop off quickly, with only one slight spike around lag 12 that is within the confidence band, and the mean and variance of the realization appear constant. The seasonal-differenced data appears stationary, so we move on to AIC5 for model selection.
+
+### AIC
+
+```{r warning=FALSE}
+aic5.wge(patemp_diff, p = 0:12, q = 0:5, type = "aic")
+```
+
+AIC suggest an AR(12) model for the seasonally-differenced data. We estimate the model as follows:
+
+### Fitting
+
+```{r}
+fit1 = est.ar.wge(patemp_diff, p = 12)
+```
+
+We see both of our absolute reciprocals are less than 1, indicating stationarity, so we check whether our residuals are white noise using the Ljung-Box test.
+
+### Ljung-Boxx Test
+
+```{r}
+ljung.wge(fit1$res, K = 24)
+ljung.wge(fit1$res, K = 48)
+```
+
+The Ljung-Box test p-values are both greater than 0.05 (.77 and .12) indicating that our residuals are white noise. Our seasonally-differenced AR(12) model is:
+
+$$(1 - B^{12})(1-1.8780B+0.9288B^2)(1-1.3931B+0.9211B^2)(1+0.4070B+0.9086B^2)(1+1.8410B+0.9053B^2)(1+1.2929B+0.8617B^2)(1-0.5363B+0.8188B^2)X_t = a_t$$
+
+## e: Forecast
+
+We want to forecast the next 5 years of Pennsylvania temperatures. Using our fitted model, we can generate forecasts as follows:
+
+```{r, results='hide'}
+forecast_temps = fore.aruma.wge(patemp, phi = fit1$phi, s = 12, n.ahead = 60, lastn = TRUE, limits = TRUE)
+```
+
+## f: RMSE
+
+### RMSE
+
+Now we use RMSE to assess the forecast accuracy. 
+
+```{r, results='hide'}
+n = length(patemp)
+n_train = n - 60
+train_data = patemp[1:n_train]
+test_data = patemp[(n_train + 1):n]
+
+train_diff = artrans.wge(train_data, phi.tr = c(rep(0, 11), 1))
+
+fit_train = est.ar.wge(train_diff, p = 12)
+
+fore_test = fore.aruma.wge(train_data, phi = fit_train$phi, 
+                           s = 12, n.ahead = 60, lastn = TRUE, limits = TRUE)
+
+rmse = sqrt(mean((test_data - fore_test$f)^2))
+rmse
+```
+
+Out RMSE of 3.79624 indicates that our model has reasonably good forecast accuracy (on average, we are off by about 3.8 degrees fahrenheit). We can also use rolling window RMSE:
+
+### Rolling-Window RMSE
+
+```{r, results='hide'}
+rolling_rmse = roll.win.rmse.wge(patemp, horizon = 60, s = 12, d = 0, phi = fit1$phi)
+```
+
+The rolling-window RMSE over a horizon of 60 is 3.871, which is similar to our previous RMSE calculation.
+
+# 7.6: Tesla Stock Price
+
+## a: Visualize the Data
+
+```{r}
+data(tesla)
+plots = plotts.sample.wge(tesla)
+parzen_tesla = parzen.wge(tesla)
+```
+
+## b: Model Selection
+
+### AIC
+
+Because of the strong trend and stable autocorrelations, we difference the data once to achieve stationarity, and use AIC to find some candidate models.
+
+```{r}
+tesla_diff = artrans.wge(tesla, phi.tr = 1)
+plotts.sample.wge(tesla_diff)
+
+aic5.wge(tesla_diff, p = 0:5, q = 0:2, type = "aic")
+```
+
+### Fitting
+
+```{r, results='hide'}
+est_arma22 = est.arma.wge(tesla_diff, p = 2, q = 2)
+```
+
+We fit an ARMA(2,2) to the differenced data, giving us an ARIMA(2,1,2) model of:
+
+$$(1-B)(1 + 0.9012B + 0.9219B^2)X_t = (1 + 0.8692B + 0.8504B^2)a_t$$
+
+## c: Forecast
+
+We forecast through the end of 2021 with our fitted model:
+
+```{r, results='hide'}
+fore_tesla = fore.aruma.wge(tesla, phi = est_arma22$phi, theta = est_arma22$theta, d = 1, n.ahead = 168, lastn = TRUE, limits = TRUE)
+```
+
+Our forecasts show an upward trend continuing through the end of 2021, with wide prediction intervals as time goes on (reflecting increasing uncertainty).
+
+## d, e: Comparison to Actual Values
+
+This came up in office hours with Dr. Sadler, but something changed in the Tesla stock price data after the dataset was published (a stock split or something) that makes it impossible to compare our forecasts to actual values. I chalk this up to typical Musk-related shadiness. 
+
+## f: RMSE
+
+### RMSE
+
+In lieu of comparing to actual values, we can use RMSE and rolling-window RMSE to assess our model based on the last 30 days of values:
+
+```{r, results='hide'}
+n = length(tesla)
+n_train = n - 30
+train_data = tesla[1:n_train]
+test_data = tesla[(n_train + 1):n]
+
+train_diff = artrans.wge(train_data, phi.tr = 1)
+fit_train = est.arma.wge(train_diff, p = 2, q = 2)
+
+fore_test = fore.aruma.wge(train_data, phi = fit_train$phi, theta = fit_train$theta, d = 1, n.ahead = 30, lastn = TRUE, limits = TRUE)
+
+rmse = sqrt(mean((test_data - fore_test$f)^2))
+rmse
+```
+
+In the world of stock forecasting, an RMSE of 188.7182 is not terrible for a stock like Tesla, that has a high price and high volatility. We can also use rolling window RMSE:
+
+### Rolling-Window RMSE
+
+```{r, results='hide'}
+rolling_rmse = roll.win.rmse.wge(tesla, horizon = 30, s = 0, d = 1, 
+                                 phi = est_arma22$phi, theta = est_arma22$theta)
+```
+
+Our rolling window RMSE over a horizon of 30 days is 74.371, which is significantly lower than our previous RMSE calculation. This indicates that our model performs better on average over rolling windows than it does specifically on the last 30 days of data.
+
+# 7.9: AirPassenger Data
+
+## a: Third Model Selection by AIC
+
+Looking at the seasonally-differenced log of the airline passenget data, we can use AIC to select a third model:
+
+```{r warning=FALSE}
+data(AirPassengers)
+logAP = log(AirPassengers)
+
+s12 = artrans.wge(logAP, phi.tr = c(rep(0,11), 1), plot = FALSE)
+s12d1 = artrans.wge(s12, phi.tr = 1, plot = FALSE)
+
+aic_results = aic5.wge(s12d1, p = 0:13, q = 0:5)
+```
+
+The question asks for the model with the second lowest AIC, which is an ARMA(13,5). With the seasonal and first differences, this gives us an ARIMA(13,1,5)(0,1,0)[12] model. We estimate the model:
+
+```{r}
+airline3 = est.arma.wge(s12d1, p = 13, q = 5)
+```
+
+We note that the second MA factor has a root on the unit circle, which technically violates invertibility, but since the question directed us to use the second-lowest AIC we will proceed with it. Our model is:
+
+$$(1-B)(1-B^{12})(1-0.3773B+0.9300B^2)(1+1.8704B+0.9091B^2)(1-1.8346B+0.9002B^2)(1-1.3286B+0.8934B^2)(1+0.2706B+0.8812B^2)(1+1.1588B+0.7174B^2)(1+0.2720B)X_t = (1+0.0320B+1.0000B^2)(1+0.9801B)(1-1.3585B+0.5407B^2)a_t$$
+
+Now we can use rollwing window RMSE to compare it to the "Airline Model" and the alternative model from example 7.4.
+
+## b: Rolling Window RMSE Comparison on 12-Month Horizon
+
+```{r, results='hide'}
+estAIRLINE = est.ar.wge(s12d1, p = 13, method = 'burg')
+estALT = est.ar.wge(s12, p = 13)
+
+rw_airline = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = estAIRLINE$phi, horizon = 12)
+rw_alt = roll.win.rmse.wge(logAP, s = 12, d = 0, phi = estALT$phi, horizon = 12)
+rw_airline3 = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = airline3$phi, theta = airline3$theta, horizon = 12)
+```
+
+On the 12-month horizon, we see that our new model performs similarly to the "Airline Model" and significantly better than the alternative model. I don't know if all that extra complexity is worth it when it's 0.003 RMSE worse than the simpler ariline model.
+
+| Model | Specification | Horizon | Rolling Window RMSE |
+|-------|--------------|---------|---------------------|
+| Airline Model | ARIMA(13,1,0)(0,1,0)[12] | 12 | 0.055 |
+| Alternative Model | ARIMA(13,0,0)(0,1,0)[12] | 12 | 0.115 |
+| New Model | ARIMA(13,1,5)(0,1,0)[12] | 12 | 0.058 |
+
+## c: RMSE on 24, 36, and 48-Month Horizons
+
+### 24 Months
+
+```{r, results='hide'}
+rw_airline_24 = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = estAIRLINE$phi, horizon = 24)
+rw_alt_24 = roll.win.rmse.wge(logAP, s = 12, d = 0, phi = estALT$phi, horizon = 24)
+rw_airline3_24 = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = airline3$phi, theta = airline3$theta, horizon = 24)
+```
+
+The airline model still performs best on the 24-month horizon, with our new model again close behind and the alternative model significantly worse.
+
+| Model | Specification | Horizon | Rolling Window RMSE |
+|-------|--------------|---------|---------------------|
+| Airline Model | ARIMA(13,1,0)(0,1,0)[12] | 24 | 0.085 |
+| Alternative Model | ARIMA(13,0,0)(0,1,0)[12] | 24 | 0.189 |
+| New Model | ARIMA(13,1,5)(0,1,0)[12] | 24 | 0.089 |
+
+### 36 Months
+
+```{r, results='hide'}
+rw_airline_36 = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = estAIRLINE$phi, horizon = 36)
+rw_alt_36 = roll.win.rmse.wge(logAP, s = 12, d = 0, phi = estALT$phi, horizon = 36)
+rw_airline3_36 = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = airline3$phi, theta = airline3$theta, horizon = 36)
+```
+
+The airline model continues to outperform (0.113), with our new model very close behind (0.116). The alternative model remains significantly worse (0.253).
+
+| Model | Specification | Horizon | Rolling Window RMSE |
+|-------|--------------|---------|---------------------|
+| Airline Model | ARIMA(13,1,0)(0,1,0)[12] | 36 | 0.113 |
+| Alternative Model | ARIMA(13,0,0)(0,1,0)[12] | 36 | 0.253 |
+| New Model | ARIMA(13,1,5)(0,1,0)[12] | 36 | 0.116 |
+
+### 48 Months
+
+
+
+```{r, results='hide'}
+rw_airline_48 = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = estAIRLINE$phi, horizon = 48)
+rw_alt_48 = roll.win.rmse.wge(logAP, s = 12, d = 0, phi = estALT$phi, horizon = 48)
+rw_airline3_48 = roll.win.rmse.wge(logAP, s = 12, d = 1, phi = airline3$phi, theta = airline3$theta, horizon = 48)
+```
+
+Again, we see the airline model performs best, but our new model is virtually identical in performance (0.135 vs 0.134). The alternative model is again significantly worse (0.328).
+
+| Model | Specification | Horizon | Rolling Window RMSE |
+|-------|--------------|---------|---------------------|
+| Airline Model | ARIMA(13,1,0)(0,1,0)[12] | 48 | 0.134 |
+| Alternative Model | ARIMA(13,0,0)(0,1,0)[12] | 48 | 0.328 |
+| New Model | ARIMA(13,1,5)(0,1,0)[12] | 48 | 0.135 |

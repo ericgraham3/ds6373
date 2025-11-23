@@ -1,0 +1,120 @@
+---
+title: "Unit 12 Homework"
+author: "Eric Graham"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    df_print: paged
+    toc: true
+    toc_depth: 2
+    toc_float: true
+    theme: united
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tswge)
+library(vars)
+```
+
+# 10.3
+
+## Note on Data
+
+I used the sunspot/melanoma data from the Example 10.3 in the textbook, it wasn't clear to me what the melanoma2.0 dataset would be, but since the question asked us to compare our new MLR to the VAR model from Example 10.3, I went with that dataset.
+
+```{r}
+melanoma = c(1.0,0.9,0.8,1.4,1.2,1.0,1.5,1.9,1.5,1.5,1.5,1.6,1.8,2.8,2.5,2.5,
+             2.4,2.1,1.9,2.4,2.4,2.6,2.6,4.4,4.2,3.8,3.4,3.6,4.1,3.7,4.2,4.1,4.1,4.0,5.2,
+             5.3, 5.3)
+sunspot = c(133,191,183,148,113,79,51,27,16,55,154,215,193,191,119,98,45,20,7,
+            54,201,269,262,225,159,76,53,40,15,22,67,133,150,149,148,94,98)
+
+t = 1:37
+year = 1935 + t
+
+mel.64 = melanoma[1:29]
+sun.64 = sunspot[1:29]
+
+mel.test = melanoma[30:37]
+sun.test = sunspot[30:37]
+```
+
+## Fit MLR Model
+
+To fit an MLR model, we first need to forecast the sunspot data for the next 8 years. We then use the lagged forecasts (lag of two years) to predict melanoma using a linear regression with time as an additional predictor.
+
+```{r}
+p.sun = aic.wge(sun.64, p=0:10, q=0)
+sun.est = est.ar.wge(sun.64, p=p.sun$p)
+sun.forecast = fore.arma.wge(sun.64, phi=sun.est$phi, n.ahead=8, lastn=FALSE, limits=FALSE)
+
+sun.lag2.train = sunspot[1:27]
+mel.train.lag2 = melanoma[3:29]
+t.train = 1:27
+
+ksfit = lm(mel.train.lag2 ~ t.train + sun.lag2.train)
+
+phi = aic.wge(ksfit$residuals, p=0:8, q=0)
+
+fit.mlr = arima(mel.train.lag2, order=c(phi$p,0,0), xreg=cbind(t.train, sun.lag2.train))
+```
+
+```{r}
+sun.for.pred = c(sunspot[28:29], sun.forecast$f[1:6])
+t.for.pred = 28:35
+newxreg.mlr = cbind(t.for.pred, sun.for.pred)
+preds.mlr = predict(fit.mlr, n.ahead=8, newxreg=newxreg.mlr)
+RMSE_MLR = sqrt(mean((mel.test - preds.mlr$pred)^2))
+RMSE_MLR
+```
+
+Our MLR model produces an RMSE of 0.4458037, which is great! 
+
+## Fit VAR Model (from Example 10.3)
+
+```{r}
+X = cbind(mel.64, sun.64)
+
+VARselect(X, lag.max=5, type="const", season=NULL, exogen=NULL)
+
+VAR.fit = VAR(X, p=4, type='const')
+
+preds.var = predict(VAR.fit, n.ahead=8)
+
+mel.f = preds.var$fcst$mel.64[,1]
+
+RMSE_VAR = sqrt(mean((mel.test - mel.f)^2))
+RMSE_VAR
+```
+
+The performance of the VAR model is also impressive, with an RMSE of 0.7870964. However the MLR model outperforms it.
+
+## Visualization of Forecasts
+
+```{r}
+
+plot(year, melanoma, type='o', pch=20, ylim=c(0,6), 
+     xlab="Year", ylab="Melanoma Incidence",
+     main="Melanoma Forecasts: MLR vs VAR (1965-1972)")
+points(year[30:37], preds.mlr$pred, type='o', pch=1, lty=2, col='blue', lwd=2)
+points(year[30:37], mel.f, type='o', pch=15, lty=2, col='red', lwd=2)
+abline(v=year[29], lty=3, col='gray')
+legend("topleft", 
+       legend=c("Actual", paste0("MLR (RMSE=", round(RMSE_MLR,3), ")"), 
+                paste0("VAR (RMSE=", round(RMSE_VAR,3), ")")), 
+       col=c("black", "blue", "red"), 
+       pch=c(20,1,15), 
+       lty=c(1,2,2),
+       lwd=c(1,2,2))
+```
+
+Interestingly, neither model captures the slight dip followed by sharp increase from the actual data. The VAR model overestimates melanoma incidence almosot entirely, while the MLR model is much closer to the actual values but comes in a little low (which isn't exactly reassuring when modeling predictions related to the cause of cancer).
+
+## Model Comparison
+
+In this case, the MLR has a better RMSE, and seems to model the actual trend more accurately. In general, MLR is more interpretable, but it also has the potential pitfall of compounding error: if the sunspot forecasts are off, the melanoma forecasts will be off as well. 
+
+The VAR model avoids this issue by modeling both series simultaneously, but it's not as interpretable. It is also easier to implement! 
+
+In general, if you can rely on the predictor variable forecasts (as I believe we can here, since sunspots are pretty well understood) then MLR is preferable due to its interpretability. In situations where the predictor forecasts aren't a known quantity, or in which easier implementation is prioritized over predictive accuracy, VAR may be the safer choice.
